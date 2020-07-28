@@ -1,0 +1,3 @@
+<launch>
+	<node name="cloud_viewer" pkg="tesi" type="cloud_viewer" output="screen" args="-i"/>
+</launch>

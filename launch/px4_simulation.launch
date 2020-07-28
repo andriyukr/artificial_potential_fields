@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="vehicle" value="px4"/>
+	<arg name="file_waypoints" value="$(find controllers)/policy/waypoints.txt"/>
+	<arg name="file_waypoints_stamped" value="$(find controllers)/policy/waypoints_stamped.txt"/>
+
+	<remap from="/uav/command_velocity" to="/$(arg vehicle)/attractive_velocity"/>
+	<remap from="/uav/command" to="/$(arg vehicle)/command"/>
+	<remap from="/uav/position" to="/$(arg vehicle)/position"/>
+	<remap from="/uav/velocity" to="/$(arg vehicle)/linear_velocity"/>
+	<remap from="/uav/odometry" to="/mavros/local_position/odom"/>
+	<remap from="/uav/trajectory" to="/$(arg vehicle)/trajectory"/>
+	<remap from="/uav/trajectory_velocity" to="/$(arg vehicle)/trajectory_velocity"/>
+	<remap from="/uav/trajectory" to="/$(arg vehicle)/command_position"/>
+	<!-- remap from="/$(arg vehicle)/command_attitude" to="/$(arg vehicle)/command_velocity"/ -->
+	
+	<node name="safe_px4" pkg="controllers" type="safe_px4" output="screen" args=""/>
+	
+	<include file="$(find controllers)/launch/pid.launch"/>
+
+	<node name="fake_mocap_px4" pkg="controllers" type="fake_mocap_px4" output="screen" args="">
+		<remap from="/in_pose" to="/gazebo/model_states"/>
+		<remap from="/out_pose" to="/mavros/vision_pose/pose"/>
+	</node>
+
+	<node name="potential_fields" pkg="artificial_potential_fields" type="apf" output="screen" args="">
+		<param name="UAV_radius" value="0.5" />
+		<remap from="/uav/attractive_velocity" to="/$(arg vehicle)/attractive_velocity"/>
+		<remap from="/potential_fields/velocity" to="/$(arg vehicle)/command_velocity"/>	
+	</node>
+
+	<node name="trajectory" pkg="controllers" type="trajectory" output="screen" args="">
+		<param name="file_waypoints" value="$(arg file_waypoints)" />
+		<param name="file_waypoints_stamped" value="$(arg file_waypoints_stamped)" />
+	</node>
+	
+	<node name="data_record" pkg="controllers" type="data_record" output="screen" args=""/>
+	<node name="teleop_key" pkg="controllers" type="teleop_key" output="screen" args=""/>
+
+	<node name="dynamic_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" output="screen" args=""/>
+	
+	<node name="rplidar_link_tf_broadcaster" pkg="tf" type="static_transform_publisher" args="0 0 0.1 0 0 0 base_link rplidar_link 100"/>
+	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find artificial_potential_fields)/rviz/rviz.rviz"/>
+</launch>

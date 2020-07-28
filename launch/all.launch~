@@ -1,0 +1,43 @@
+<launch>
+	<node name="rqt_plot" pkg="rqt_plot" type="rqt_plot" output="screen"/>
+
+	<!--include file="$(find gazebo_ros)/launch/empty_world.launch">
+		<arg name="world_name" value="$(find tesi)/worlds/vtol.world"/>
+		<arg name="paused" value="true"/>
+		<arg name="gui" value="true"/>
+	</include-->
+	
+	<!-- SPAWN THE VTOL INTO GAZEBO -->
+	<!--node name="spawn_sdf" pkg="gazebo_ros" type="spawn_model" args="-file $(find labrob_hydro_vtol)/description/vtol/vtol_with_kinect.sdf -sdf -model vtol -z 1" /-->
+	<include file="$(find labrob_hydro_vtol)/launch/spawn_vtol.launch">
+		<arg name="robotName" value="vtol"/>
+	</include>
+
+	<!-- CHANGE ALSO INITIAL Z IN GAZEBO SPAWN (BELOW) -->
+	<param name="initial_x" value="0.0" type="double"/>
+	<param name="initial_y" value="0.0" type="double"/>
+	<param name="initial_z" value="1" type="double"/>
+
+	<!--node respawn="true" pkg="joy" type="joy_node" name="joy" >
+		<param name="dev" type="string" value="/dev/input/js0"/>
+		<param name="deadzone" value="0.12" />
+	</node-->
+
+	<!--node name="teleop_joy" pkg="tesi" type="teleop_joy" output="screen"/-->
+
+	<!--node name="teleop_key" pkg="tesi" type="teleop_key" output="screen"/-->
+
+	<!--node name="DFL" pkg="tesi" type="DFL" output="screen"/-->
+
+	<!--node name="VM" pkg="tesi" type="VM" output="screen"/-->
+
+	<node name="APF" pkg="tesi" type="APF" output="screen" args=""/>
+
+	<node name="cloud_viewer" pkg="tesi" type="cloud_viewer" output="screen" args=""/>
+
+	<!--node name="base_tf_broadcaster" pkg="tf" type="static_transform_publisher" args="0 0 1 0 0 0 world base_link 100"/-->
+	<!--node name="kinect_tf_broadcaster" pkg="tf" type="static_transform_publisher" args="0 0 0.075 0 0 -1.570796327 base_link kinect_link 100"/-->
+
+	<!--param name="robot_description" command="cat $(find tesi)/urdf/vtol_with_kinect.sdf"/-->
+	<!--node name="rviz" pkg="rviz" type="rviz" args="-d $(find tesi)/rviz_cfg/tesi.rviz"/-->
+</launch>

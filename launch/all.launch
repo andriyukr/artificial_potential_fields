@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>	
+
+	<!--node name="teleop_joy" pkg="tesi" type="teleop_joy" output="screen"/-->
+	<!--node name="teleop_key" pkg="tesi" type="teleop_key" output="screen"/-->
+
+	<node name="apf" pkg="artificial_potential_fields" type="apf" output="screen" args=""/>
+
+	<!--node name="base_tf_broadcaster" pkg="tf" type="static_transform_publisher" args="0 0 1 0 0 0 world base_link 100"/-->
+	<!--node name="kinect_tf_broadcaster" pkg="tf" type="static_transform_publisher" args="0 0 0.075 0 0 -1.570796327 base_link rplidar_link 100"/-->
+
+	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find artificial_potential_fields)/rviz_cfg/rviz.rviz"/>
+</launch>

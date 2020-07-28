@@ -1,0 +1,30 @@
+<launch>
+	<!--include file="$(find gazebo_ros)/launch/empty_world.launch">
+		<arg name="world_name" value="$(find tesi)/worlds/tesi.world"/-->
+		<!--arg name="world_name" value="$(find tesi)/worlds/small_indoor_scenario.world"/-->
+		<!--arg name="world_name" value="$(find tesi)/worlds/willow_garage.world"/-->
+	<!--/include-->
+ 
+	<!--include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+		<arg name="model" value="$(find tesi)/urdf/quadrotor_with_kinect.gazebo.xacro"/>
+		<arg name="x" value="0"/>
+		<arg name="y" value="0"/>
+		<arg name="z" value="0"/>
+	</include-->
+
+	<!--node name="base_tf_broadcaster" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 base_stabilized base_link 100"/-->
+
+	<!--node name="rviz" pkg="rviz" type="rviz" args="-d $(find tesi)/rviz_cfg/tesi.rviz"/-->
+
+	<node name="teleop_key" pkg="tesi" type="teleop_key" output="screen"/>
+
+	<!--node name="artificial_potential_field" pkg="tesi" type="artificial_potential_field" output="screen"/-->
+
+	<!--node name="quadrotor_controller" pkg="tesi" type="quadrotor_controller" output="screen" args="1 2 4"/-->
+
+	<!--node name="DFL" pkg="tesi" type="DFL" output="screen"/-->
+
+	<node name="VM" pkg="tesi" type="VM" output="screen"/>
+
+	<!--node name="DFL_Test" pkg="tesi" type="DFL_Test" output="screen"/-->
+</launch>
