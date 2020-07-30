@@ -11,7 +11,7 @@ void quit(int sig){
 }
 
 int main(int argc, char** argv){
-    ros::init(argc, argv, "Point Cloud Viewer");
+    ros::init(argc, argv, "pointcloud_viewer");
     ros::NodeHandle node_handle;
 
     point_cloud_subscriber = node_handle.subscribe("/point_cloud", 1, cloudCallback);

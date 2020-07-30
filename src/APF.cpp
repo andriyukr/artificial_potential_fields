@@ -12,6 +12,7 @@ void odometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg){
 
     Eigen::Quaternionf quaternion(odometry_msg->pose.pose.orientation.w, odometry_msg->pose.pose.orientation.x, odometry_msg->pose.pose.orientation.y, odometry_msg->pose.pose.orientation.z);
     R = quaternion.toRotationMatrix();
+    rotation << R(0, 0), R(0, 1), R(0, 2), 0, R(1, 0), R(1, 1), R(1, 2), 0, R(2, 0), R(2, 1), R(2, 2), odometry_msg->pose.pose.position.z, 0, 0, 0, 1;
 
     /*Vector3f euler = quaternion.toRotationMatrix().eulerAngles(0, 1, 2);
     float roll = euler(0);
@@ -51,12 +52,11 @@ APF::APF(int argc, char** argv){
     repulsive_publisher = node_handle.advertise<geometry_msgs::Vector3>("/potential_fields/repulsive", 1); // for debug
     point_cloud_publisher = node_handle.advertise<pcl::PointCloud<pcl::PointXYZ>>("/point_cloud", 1); // for debug
 
-    /*tf::TransformListener tfListener;
-    tfListener.setExtrapolationLimit(ros::Duration(0.1));*/
-
     if(!node_handle.getParam("/potential_fields/UAV_radius", UAV_radius))
         ROS_WARN_STREAM("[APF] Parameter 'UAV_radius' not defined!");
     //ROS_INFO_STREAM("[APF] UAV_radius = " << UAV_radius);
+
+    rotation = MatrixXf::Identity(4, 4);
 }
 
 // Destructor
@@ -71,31 +71,23 @@ void APF::run(){
     f = boost::bind(&dynamicReconfigureCallback, _1, _2);
     server.setCallback(f);
 
-    Vector3f force;                                  //
+    Vector3f force;
     Vector3f repulsive_force;
 
-    ros::Rate rate(100);
+    ros::Rate rate(5); // if rate increases, the a copy ofthe cloud has to made and process the copy (otherwise callback will overwrite the cloud)
     while(ros::ok()){
         rate.sleep();
         ros::spinOnce();
 
-        //tf_listener->waitForTransform("/world", (*pcl_in).header.frame_id, (*pcl_in).header.stamp, ros::Duration(5.0));
-        //pcl_ros::transformPointCloud("/world", *pcl_in, pcl_out, *tf_listener);
-
-        /*Matrix4f rotation;
-        rotation << R(0, 0), R(0, 1), R(0, 2), 0, R(1, 0), R(1, 1), R(1, 2), 0, R(2, 0), R(2, 1), R(2, 2), 0, 0, 0, 0, 1;
-        pcl::transformPointCloud(*cloud, *cloud, rotation);
-        cloud->header.frame_id = "map";*/
+        pcl::transformPointCloud(*cloud, *cloud, rotation); // rotates the cloud the world frame
+        cloud->header.frame_id = "map"; // pseudo map (translation invariant)
 
         // Filter the point cloud
         pcl::PassThrough<pcl::PointXYZ> pass;
         pass.setInputCloud(cloud);
-        pass.setFilterFieldName("x");
-        pass.setFilterLimits(0.3, 100); // filter the quadrotor's body
-        //pass.filter(*cloud);
         pass.setFilterFieldName("z");
-        pass.setFilterLimits(-height + 0.2, 100); // filter the floor; 0.02 is the treshold
-        //pass.filter(*cloud);
+        pass.setFilterLimits(0.1, 100); // filter the floor; 0.1 is the treshold
+        pass.filter(*cloud);
 
         // Compute the attractive forces
         repulsive_force << 0, 0, 0;
@@ -105,7 +97,7 @@ void APF::run(){
             float eta = distance(obstacle);
             if(eta < eta_0){
                 obstacle -= obstacle/eta*UAV_radius; // move the UAV's center to the point on the sfere surrounding UAV and closest to the obstacle
-                //repulsive_force += k_repulsive*pow(1/eta - 1/eta_0, 2)/2*obstacle/eta;
+                //repulsive_force += pow(1/eta - 1/eta_0, 2)/2*obstacle/eta;
                 repulsive_force += (1/eta - 1/eta_0)/pow(eta, 2)*obstacle;
                 ++points;
             }
@@ -114,21 +106,19 @@ void APF::run(){
             //repulsive_force /= points;
         }
 
-        //msg.twist.linear.x = -cos(pose(3))*potential_velocity(0) + sin(pose(3))*potential_velocity(1);
-        //msg.twist.linear.y = -sin(pose(3))*potential_velocity(0) - cos(pose(3))*potential_velocity(1);
-
-        repulsive_force *= k_repulsive;
-        repulsive_force(2) = 0;
+        repulsive_force *= k_repulsive*(1 + speed);
+        //repulsive_force(2) = 0;
         //repulsive_force = R*repulsive_force; // TODO: instead use TF to transform from lidar frame to global frame
 
         force = velocity_d.head(3) - repulsive_force;
 
-        geometry_msgs::TwistStamped msg;
-        msg.twist.linear.x = force(0);
-        msg.twist.linear.y = force(1);
-        msg.twist.linear.z = velocity_d(2);
-        msg.twist.angular.z = velocity_d(3);
-        force_publisher.publish(msg);
+        geometry_msgs::TwistStamped force_msg;
+        force_msg.header.stamp = ros::Time::now();
+        force_msg.twist.linear.x = force(0);
+        force_msg.twist.linear.y = force(1);
+        force_msg.twist.linear.z = velocity_d(2);
+        force_msg.twist.angular.z = velocity_d(3);
+        force_publisher.publish(force_msg);
 
         geometry_msgs::Vector3 debug_msg;
         debug_msg.x = velocity_d(0);

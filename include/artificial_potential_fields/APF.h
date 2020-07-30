@@ -15,6 +15,7 @@
 #include <pcl/common/transforms.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
 #include <laser_geometry/laser_geometry.h>
 #include <Eigen/Dense>
 #include <dynamic_reconfigure/server.h>
@@ -35,6 +36,7 @@ ros::Publisher point_cloud_publisher;               //
 
 Vector4f velocity_d;
 Matrix3f R;                                         // rotation matrix from world frame to quadrotor frame
+Matrix4f rotation;
 geometry_msgs::Quaternion orientation;              //
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
 laser_geometry::LaserProjection projector;
