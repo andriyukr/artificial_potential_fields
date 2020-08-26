@@ -8,11 +8,11 @@ void odometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg){
     //pose << odometry_msg->pose.pose.position.x, odometry_msg->pose.pose.position.y, odometry_msg->pose.pose.position.z, yaw;
 
     speed = sqrt(pow(odometry_msg->twist.twist.linear.x, 2) + pow(odometry_msg->twist.twist.linear.y, 2));
+    position << odometry_msg->pose.pose.position.x, odometry_msg->pose.pose.position.y, odometry_msg->pose.pose.position.z;
     height = odometry_msg->pose.pose.position.z;
 
     Eigen::Quaternionf quaternion(odometry_msg->pose.pose.orientation.w, odometry_msg->pose.pose.orientation.x, odometry_msg->pose.pose.orientation.y, odometry_msg->pose.pose.orientation.z);
     R = quaternion.toRotationMatrix();
-    rotation << R(0, 0), R(0, 1), R(0, 2), 0, R(1, 0), R(1, 1), R(1, 2), 0, R(2, 0), R(2, 1), R(2, 2), odometry_msg->pose.pose.position.z, 0, 0, 0, 1;
 
     /*Vector3f euler = quaternion.toRotationMatrix().eulerAngles(0, 1, 2);
     float roll = euler(0);
@@ -29,6 +29,17 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan){
     sensor_msgs::PointCloud2 msg_cloud;
     projector.projectLaser(*scan, msg_cloud);
     pcl::fromROSMsg(msg_cloud, *cloud);
+
+    transformation << R(0, 0), R(0, 1), R(0, 2), position(0), R(1, 0), R(1, 1), R(1, 2), position(1), R(2, 0), R(2, 1), R(2, 2), height, 0, 0, 0, 1;
+    pcl::transformPointCloud(*cloud, *cloud, transformation); // rotates the cloud the world frame
+    cloud->header.frame_id = "map"; // pseudo map (x and y translation invariant)
+
+    // Filter the point cloud
+    pcl::PassThrough<pcl::PointXYZ> pass;
+    pass.setInputCloud(cloud);
+    pass.setFilterFieldName("z");
+    pass.setFilterLimits(0.2, 100); // filter the floor; 0.1 is the treshold
+    pass.filter(*cloud);
 }
 
 void dynamicReconfigureCallback(artificial_potential_fields::setAPFConfig &config, uint32_t level){
@@ -56,7 +67,7 @@ APF::APF(int argc, char** argv){
         ROS_WARN_STREAM("[APF] Parameter 'UAV_radius' not defined!");
     //ROS_INFO_STREAM("[APF] UAV_radius = " << UAV_radius);
 
-    rotation = MatrixXf::Identity(4, 4);
+    transformation = MatrixXf::Identity(4, 4);
 }
 
 // Destructor
@@ -74,26 +85,16 @@ void APF::run(){
     Vector3f force;
     Vector3f repulsive_force;
 
-    ros::Rate rate(5); // if rate increases, the a copy ofthe cloud has to made and process the copy (otherwise callback will overwrite the cloud)
+    ros::Rate rate(100);
     while(ros::ok()){
         rate.sleep();
         ros::spinOnce();
-
-        pcl::transformPointCloud(*cloud, *cloud, rotation); // rotates the cloud the world frame
-        cloud->header.frame_id = "map"; // pseudo map (translation invariant)
-
-        // Filter the point cloud
-        pcl::PassThrough<pcl::PointXYZ> pass;
-        pass.setInputCloud(cloud);
-        pass.setFilterFieldName("z");
-        pass.setFilterLimits(0.1, 100); // filter the floor; 0.1 is the treshold
-        pass.filter(*cloud);
 
         // Compute the attractive forces
         repulsive_force << 0, 0, 0;
         int points = 0;
         for(int i = 0; i < cloud->size(); ++i){
-            Vector3f obstacle(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z); // point obstacle
+            Vector3f obstacle(cloud->points[i].x - position(0), cloud->points[i].y - position(1), 0); // point obstacle
             float eta = distance(obstacle);
             if(eta < eta_0){
                 obstacle -= obstacle/eta*UAV_radius; // move the UAV's center to the point on the sfere surrounding UAV and closest to the obstacle
@@ -106,8 +107,7 @@ void APF::run(){
             //repulsive_force /= points;
         }
 
-        repulsive_force *= k_repulsive*(1 + speed);
-        //repulsive_force(2) = 0;
+        repulsive_force *= k_repulsive;//*(1 + speed);
         //repulsive_force = R*repulsive_force; // TODO: instead use TF to transform from lidar frame to global frame
 
         force = velocity_d.head(3) - repulsive_force;

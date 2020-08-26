@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <Eigen/Dense>
 
 using namespace Eigen;
@@ -8,6 +9,7 @@ using namespace Eigen;
 Vector3f force;
 Vector3f attractive;
 Vector3f repulsive;
+Vector3f position;
 
 void forceCallback(const geometry_msgs::TwistStamped& msg){
     force << msg.twist.linear.x, msg.twist.linear.y, msg.twist.linear.z;
@@ -21,6 +23,10 @@ void repulsiveCallback(const geometry_msgs::Vector3& msg){
     repulsive << msg.x, msg.y, msg.z;
 }
 
+void poseCallback(const geometry_msgs::PoseStamped& pose_msg){
+    position << pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z;
+}
+
 int main( int argc, char** argv ){
   ros::init(argc, argv, "rviz_force_visualization");
   ros::NodeHandle node_handle;
@@ -29,6 +35,7 @@ int main( int argc, char** argv ){
   ros::Subscriber force_publisher = node_handle.subscribe("/iris_rplidar/command_velocity", 1, forceCallback);
   ros::Subscriber attractive_publisher = node_handle.subscribe("/potential_fields/attractive", 1, attractiveCallback);
   ros::Subscriber repulsive_publisher = node_handle.subscribe("/potential_fields/repulsive", 1, repulsiveCallback);
+  ros::Subscriber pose_subscriber = node_handle.subscribe("/mavros/local_position/pose", 1, poseCallback);
 
   ros::Publisher markers_publisher = node_handle.advertise<visualization_msgs::MarkerArray>("rviz_force_visualization_array", 1);
 
@@ -41,7 +48,7 @@ int main( int argc, char** argv ){
 
     /* Total force */
 
-    markers.markers[0].header.frame_id = "base_link";
+    markers.markers[0].header.frame_id = "map";
     markers.markers[0].header.stamp = ros::Time::now();
 
     // Set the namespace and id for this marker.  This serves to create a unique ID. Any marker sent with the same namespace and id will overwrite the old one.
@@ -58,12 +65,12 @@ int main( int argc, char** argv ){
     markers.markers[0].pose.orientation.w = 1;
 
     markers.markers[0].points.resize(2);
-    markers.markers[0].points[0].x = 0;
-    markers.markers[0].points[0].y = 0;
-    markers.markers[0].points[0].z = 0;
-    markers.markers[0].points[1].x = force(0);
-    markers.markers[0].points[1].y = force(1);
-    markers.markers[0].points[1].z = force(2);
+    markers.markers[0].points[0].x = position(0);
+    markers.markers[0].points[0].y = position(1);
+    markers.markers[0].points[0].z = position(2);
+    markers.markers[0].points[1].x = position(0) + force(0);
+    markers.markers[0].points[1].y = position(1) + force(1);
+    markers.markers[0].points[1].z = position(2) + force(2);
 
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
     markers.markers[0].scale.x = 0.1;
@@ -80,7 +87,7 @@ int main( int argc, char** argv ){
 
     /* Attractive force */
 
-    markers.markers[1].header.frame_id = "base_link";
+    markers.markers[1].header.frame_id = "map";
     markers.markers[1].header.stamp = ros::Time::now();
 
     // Set the namespace and id for this marker.  This serves to create a unique ID. Any marker sent with the same namespace and id will overwrite the old one.
@@ -97,12 +104,12 @@ int main( int argc, char** argv ){
     markers.markers[1].pose.orientation.w = 1;
 
     markers.markers[1].points.resize(2);
-    markers.markers[1].points[0].x = 0;
-    markers.markers[1].points[0].y = 0;
-    markers.markers[1].points[0].z = 0;
-    markers.markers[1].points[1].x = attractive(0);
-    markers.markers[1].points[1].y = attractive(1);
-    markers.markers[1].points[1].z = attractive(2);
+    markers.markers[1].points[0].x = position(0);
+    markers.markers[1].points[0].y = position(1);
+    markers.markers[1].points[0].z = position(2);
+    markers.markers[1].points[1].x = position(0) + attractive(0);
+    markers.markers[1].points[1].y = position(1) + attractive(1);
+    markers.markers[1].points[1].z = position(2) + attractive(2);
 
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
     markers.markers[1].scale.x = 0.1;
@@ -119,7 +126,7 @@ int main( int argc, char** argv ){
 
     /* Repulsive force */
 
-    markers.markers[2].header.frame_id = "base_link";
+    markers.markers[2].header.frame_id = "map";
     markers.markers[2].header.stamp = ros::Time::now();
 
     // Set the namespace and id for this marker.  This serves to create a unique ID. Any marker sent with the same namespace and id will overwrite the old one.
@@ -136,12 +143,12 @@ int main( int argc, char** argv ){
     markers.markers[2].pose.orientation.w = 1;
 
     markers.markers[2].points.resize(2);
-    markers.markers[2].points[0].x = 0;
-    markers.markers[2].points[0].y = 0;
-    markers.markers[2].points[0].z = 0;
-    markers.markers[2].points[1].x = repulsive(0);
-    markers.markers[2].points[1].y = repulsive(1);
-    markers.markers[2].points[1].z = repulsive(2);
+    markers.markers[2].points[0].x = position(0);
+    markers.markers[2].points[0].y = position(1);
+    markers.markers[2].points[0].z = position(2);
+    markers.markers[2].points[1].x = position(0) + repulsive(0);
+    markers.markers[2].points[1].y = position(1) + repulsive(1);
+    markers.markers[2].points[1].z = position(2) + repulsive(2);
 
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
     markers.markers[2].scale.x = 0.1;

@@ -36,10 +36,11 @@ ros::Publisher point_cloud_publisher;               //
 
 Vector4f velocity_d;
 Matrix3f R;                                         // rotation matrix from world frame to quadrotor frame
-Matrix4f rotation;
+Matrix4f transformation;
 geometry_msgs::Quaternion orientation;              //
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
 laser_geometry::LaserProjection projector;
+Vector3f position;
 float height = 0;
 float speed = 0;
 float yaw = 0;
