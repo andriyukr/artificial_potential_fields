@@ -7,6 +7,6 @@ Terminal 1:
 
       roslaunch px4 mavros_posix_sitl.launch
 
-Termianl 2:
+Terminal 2:
 
       roslaunch artificial_potential_fields px4_simulation.launch
