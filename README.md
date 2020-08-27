@@ -10,3 +10,11 @@ Terminal 1:
 Terminal 2:
 
       roslaunch artificial_potential_fields px4_simulation.launch
+
+Gazebo:
+
+![Alt Text](https://github.com/andriyukr/artificial_potential_fields/blob/master/Results/gazebo.gif)
+
+rviz:
+
+![Alt Text](https://github.com/andriyukr/artificial_potential_fields/blob/master/Results/rviz.gif)
