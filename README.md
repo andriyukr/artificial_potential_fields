@@ -13,8 +13,8 @@ Terminal 2:
 
 Gazebo:
 
-![Alt Text](https://github.com/andriyukr/artificial_potential_fields/blob/master/Results/gazebo.gif)
+![ ](https://github.com/andriyukr/artificial_potential_fields/blob/master/Results/gazebo.gif)
 
 rviz:
 
-![Alt Text](https://github.com/andriyukr/artificial_potential_fields/blob/master/Results/rviz.gif)
+![ ](https://github.com/andriyukr/artificial_potential_fields/blob/master/Results/rviz.png)
