@@ -14,7 +14,6 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/common/transforms.h>
 #include <pcl/filters/passthrough.h>
-#include <pcl/filters/extract_indices.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
 #include <laser_geometry/laser_geometry.h>

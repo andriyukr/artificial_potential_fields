@@ -33,7 +33,7 @@
 	</node>
 
 	<node name="potential_fields" pkg="artificial_potential_fields" type="apf" output="screen" args="">
-		<param name="UAV_radius" value="0.3" />
+		<param name="UAV_radius" value="0.5" />
 		<remap from="/uav/attractive_velocity" to="/$(arg vehicle)/attractive_velocity"/>
 		<remap from="/potential_fields/velocity" to="/$(arg vehicle)/command_velocity"/>	
 	</node>

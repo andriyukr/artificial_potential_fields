@@ -1,35 +1,28 @@
 #include <artificial_potential_fields/APF.h>
 
 void odometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg){
+    //tf::Quaternion q(odometry_msg->pose.pose.orientation.x, odometry_msg->pose.pose.orientation.y, odometry_msg->pose.pose.orientation.z, odometry_msg->pose.pose.orientation.w);
+    //tf::Matrix3x3 m(q);
+    //double roll, pitch, yaw;
+    //m.getRPY(roll, pitch, yaw);
+    //pose << odometry_msg->pose.pose.position.x, odometry_msg->pose.pose.position.y, odometry_msg->pose.pose.position.z, yaw;
+
     speed = sqrt(pow(odometry_msg->twist.twist.linear.x, 2) + pow(odometry_msg->twist.twist.linear.y, 2));
     position << odometry_msg->pose.pose.position.x, odometry_msg->pose.pose.position.y, odometry_msg->pose.pose.position.z;
     height = odometry_msg->pose.pose.position.z;
 
     Eigen::Quaternionf quaternion(odometry_msg->pose.pose.orientation.w, odometry_msg->pose.pose.orientation.x, odometry_msg->pose.pose.orientation.y, odometry_msg->pose.pose.orientation.z);
     R = quaternion.toRotationMatrix();
+
+    /*Vector3f euler = quaternion.toRotationMatrix().eulerAngles(0, 1, 2);
+    float roll = euler(0);
+    float pitch = euler(1);
+    yaw = euler(2);
+    cout << "[APF] attitude = [" << roll << ", \t" << pitch << ", \t" << yaw << "]" << endl;*/
 }
 
 void attractiveVelocityCallback(const geometry_msgs::TwistStamped& command_msg){
     velocity_d << command_msg.twist.linear.x, command_msg.twist.linear.y, command_msg.twist.linear.z, command_msg.twist.angular.z;
-}
-
-double distance(pcl::PointXYZ p){
-    return sqrt(pow(p.x, 2) + pow(p.y, 2) + pow(p.z, 2));
-}
-
-void filterSphere(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
-    pcl::ExtractIndices<pcl::PointXYZ> extract;
-    //ROS_INFO_STREAM("[APF] cloud->size() = " << cloud->size());
-    for(int i = 0; i < cloud->size(); ++i)
-        if(distance(cloud->at(i)) <= UAV_radius)
-            inliers->indices.push_back(i);
-    extract.setInputCloud(cloud);
-    extract.setIndices(inliers);
-    extract.setNegative(true);
-    extract.filter(*cloud);
-    //ROS_INFO_STREAM("[APF] inliers->indices.size() = " << inliers->indices.size());
-    //ROS_INFO_STREAM("[APF] cloud->size() = " << cloud->size());
 }
 
 void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan){
@@ -37,11 +30,9 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan){
     projector.projectLaser(*scan, msg_cloud);
     pcl::fromROSMsg(msg_cloud, *cloud);
 
-    filterSphere(cloud); // filters out points inside the bounding sphere
-
     transformation << R(0, 0), R(0, 1), R(0, 2), position(0), R(1, 0), R(1, 1), R(1, 2), position(1), R(2, 0), R(2, 1), R(2, 2), height, 0, 0, 0, 1;
-    pcl::transformPointCloud(*cloud, *cloud, transformation); // rotate and translate the cloud to the world frame
-    cloud->header.frame_id = "map";
+    pcl::transformPointCloud(*cloud, *cloud, transformation); // rotates the cloud the world frame
+    cloud->header.frame_id = "map"; // pseudo map (x and y translation invariant)
 
     // Filter the point cloud
     pcl::PassThrough<pcl::PointXYZ> pass;
@@ -105,18 +96,19 @@ void APF::run(){
         for(int i = 0; i < cloud->size(); ++i){
             Vector3f obstacle(cloud->points[i].x - position(0), cloud->points[i].y - position(1), 0); // point obstacle
             float eta = distance(obstacle);
-            if(eta < eta_0 && eta > UAV_radius){ // does not consider points further than eta_0 AND closer than UAV_radius (inside the bounding sphere)
+            if(eta < eta_0){
                 obstacle -= obstacle/eta*UAV_radius; // move the UAV's center to the point on the sfere surrounding UAV and closest to the obstacle
                 //repulsive_force += pow(1/eta - 1/eta_0, 2)/2*obstacle/eta;
                 repulsive_force += (1/eta - 1/eta_0)/pow(eta, 2)*obstacle;
                 ++points;
             }
         }
-        /*if(points){ // normalise repulsive force
-            repulsive_force /= points;
-        }*/
+        if(points){ // normalise repulsive force
+            //repulsive_force /= points;
+        }
 
         repulsive_force *= k_repulsive;//*(1 + speed);
+        //repulsive_force = R*repulsive_force; // TODO: instead use TF to transform from lidar frame to global frame
 
         force = velocity_d.head(3) - repulsive_force;
 
